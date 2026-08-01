@@ -1,0 +1,11 @@
+# PyInstaller 산출물 (exe 배포본 — 저장소에 넣지 않는다)
+build/
+dist/
+release/
+
+# 사용자가 받은 영상·서버 로그
+web/downloads/
+web/*.log
+
+__pycache__/
+*.pyc

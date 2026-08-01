@@ -1,0 +1,10 @@
+# 배포 이미지에 들어가면 안 되는 것 — 데스크톱 exe 빌드 산출물·받은 파일·로그
+build/
+dist/
+release/
+*.spec
+web/downloads/
+web/*.log
+__pycache__/
+*.pyc
+.git/

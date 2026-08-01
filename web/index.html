@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilibili 다운로더 — LENNON</title>
+<style>
+  :root {
+    --bg: #050507;
+    --surface: #0c0c11;
+    --input: #101016;
+    --btn: #15151c;
+    --border: #24242e;
+    --text-strong: #d2d2dc;
+    --label: #8b8b9a;
+    --muted: #74747f;
+    --accent: #7b6ef6;
+    --accent-secondary: #00cec9;
+    --grad: linear-gradient(140deg, #4fdcc8, #3a8dff);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text-strong);
+    font-family: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; }
+  .brand {
+    font-size: 12px; letter-spacing: 3px; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
+  }
+  h1 .grad {
+    background: var(--grad);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .sub { margin-top: 6px; font-size: 13px; color: var(--label); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .field-label {
+    display: block; font-size: 12px; color: var(--label);
+    margin-bottom: 8px; letter-spacing: 0.5px;
+  }
+  textarea {
+    width: 100%; min-height: 96px; resize: vertical;
+    background: var(--input); color: var(--text-strong);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 13px; line-height: 1.6;
+    font-family: inherit; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 16px; }
+  .quality-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .q-btn {
+    background: var(--btn); border: 1px solid var(--border);
+    color: var(--label); border-radius: 8px;
+    padding: 9px 16px; font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .q-btn:hover { color: var(--text-strong); border-color: #34343f; }
+  .q-btn.active {
+    background: rgba(123, 110, 246, 0.14);
+    border-color: var(--accent); color: var(--accent);
+    font-weight: 600;
+  }
+  .start-btn {
+    margin-left: auto;
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; padding: 12px 26px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: filter .15s, opacity .15s;
+  }
+  .start-btn:hover { filter: brightness(1.12); }
+  .start-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .notice {
+    margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+  .notice b { color: var(--accent-secondary); font-weight: 600; }
+
+  .alert {
+    margin-top: 14px; padding: 10px 14px; border-radius: 8px;
+    font-size: 12.5px; line-height: 1.6; display: none;
+    background: rgba(255, 99, 99, 0.08);
+    border: 1px solid rgba(255, 99, 99, 0.35);
+    color: #ff9a9a; white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* ---- 작업 목록 ---- */
+  .jobs-title {
+    font-size: 14px; font-weight: 700; color: var(--text-strong);
+    margin: 26px 0 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .jobs-title .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--grad); display: inline-block;
+  }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+
+  .job { padding: 18px; }
+  .job-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 999px; letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .badge.queued  { background: rgba(139,139,154,.12); color: var(--label); border: 1px solid var(--border); }
+  .badge.running { background: rgba(123,110,246,.14); color: var(--accent); border: 1px solid rgba(123,110,246,.4); }
+  .badge.done    { background: rgba(0,206,201,.12);  color: var(--accent-secondary); border: 1px solid rgba(0,206,201,.35); }
+  .badge.error   { background: rgba(255,99,99,.1);   color: #ff9a9a; border: 1px solid rgba(255,99,99,.35); }
+  .job-url {
+    font-size: 12.5px; color: var(--text-strong);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 120px;
+  }
+  .job-q { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+
+  .bar-wrap {
+    margin-top: 12px; height: 6px; border-radius: 999px;
+    background: var(--input); overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .bar {
+    height: 100%; width: 0%;
+    background: var(--grad);
+    border-radius: 999px; transition: width .4s ease;
+  }
+  .job-meta {
+    margin-top: 8px; font-size: 11.5px; color: var(--label);
+    display: flex; gap: 16px;
+  }
+
+  .job-log {
+    margin-top: 12px; background: var(--input);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; max-height: 150px; overflow-y: auto;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 11px; line-height: 1.7; color: var(--label);
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .job-files { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .file-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--input); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px;
+  }
+  .file-name {
+    font-size: 12.5px; color: var(--text-strong); flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .dl-link {
+    font-size: 12px; font-weight: 700; text-decoration: none;
+    color: #050507; background: var(--grad);
+    padding: 7px 14px; border-radius: 8px; white-space: nowrap;
+    transition: filter .15s;
+  }
+  .dl-link:hover { filter: brightness(1.1); }
+
+  footer { margin-top: 40px; font-size: 11px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">LENNON STUDIO · INTERNAL TOOL</div>
+    <h1>Bilibili <span class="grad">다운로더</span></h1>
+    <div class="sub">빌리빌리 영상을 서버로 내려받고, 완료되면 내 PC로 가져옵니다.</div>
+  </header>
+
+  <div class="card">
+    <label class="field-label">영상 URL — 한 줄에 하나씩 (여러 개 가능)</label>
+    <textarea id="urls" placeholder="https://www.bilibili.com/video/BV...&#10;https://b23.tv/...&#10;https://www.bilibili.tv/..."></textarea>
+
+    <div class="row">
+      <div>
+        <label class="field-label">화질</label>
+        <div class="quality-group" id="quality">
+          <button class="q-btn active" data-q="best">최고화질</button>
+          <button class="q-btn" data-q="1080p">1080p</button>
+          <button class="q-btn" data-q="720p">720p</button>
+          <button class="q-btn" data-q="audio">음성만 (MP3)</button>
+        </div>
+      </div>
+      <button class="start-btn" id="startBtn">다운로드 시작</button>
+    </div>
+
+    <div class="notice">
+      허용 도메인: <b>bilibili.com</b> · <b>b23.tv</b> · <b>bilibili.tv</b> — 그 외 URL은 거부됩니다.
+      동시 다운로드는 2개까지, 나머지는 대기열에서 순서대로 처리됩니다.
+    </div>
+    <div class="alert" id="alertBox"></div>
+  </div>
+
+  <div class="jobs-title"><span class="dot"></span>작업 현황</div>
+  <div id="jobs"><div class="empty">아직 작업이 없습니다. URL을 넣고 다운로드를 시작하세요.</div></div>
+
+  <footer>LENNON · Bilibili Downloader Web · yt-dlp 기반 · 포트 4434</footer>
+</div>
+
+<script>
+let quality = 'best';
+const qGroup = document.getElementById('quality');
+qGroup.addEventListener('click', (e) => {
+  const btn = e.target.closest('.q-btn');
+  if (!btn) return;
+  qGroup.querySelectorAll('.q-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  quality = btn.dataset.q;
+});
+
+const startBtn = document.getElementById('startBtn');
+const alertBox = document.getElementById('alertBox');
+const jobsEl = document.getElementById('jobs');
+
+startBtn.addEventListener('click', async () => {
+  const urls = document.getElementById('urls').value.trim();
+  alertBox.style.display = 'none';
+  if (!urls) {
+    showAlert('URL을 입력하세요.');
+    return;
+  }
+  startBtn.disabled = true;
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls, quality }),
+    });
+    const data = await res.json();
+    if (data.rejected && data.rejected.length) {
+      showAlert(data.rejected.map(r => '거부됨: ' + r.url + '\n→ ' + r.reason).join('\n'));
+    }
+    if (data.accepted && data.accepted.length) {
+      document.getElementById('urls').value = '';
+    }
+    poll();
+  } catch (err) {
+    showAlert('서버 요청 실패: ' + err);
+  } finally {
+    startBtn.disabled = false;
+  }
+});
+
+function showAlert(msg) {
+  alertBox.textContent = msg;
+  alertBox.style.display = 'block';
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+const STATUS_KO = { queued: '대기', running: '진행 중', done: '완료', error: '실패' };
+
+function render(jobs) {
+  if (!jobs.length) return;
+  jobsEl.innerHTML = jobs.map(j => {
+    const files = (j.files || []).map(f =>
+      `<div class="file-row">
+         <span class="file-name" title="${esc(f.label)}">${esc(f.label)}</span>
+         <a class="dl-link" href="/files/${encodeURIComponent(f.name)}">내 PC로 받기</a>
+       </div>`).join('');
+    const logHtml = (j.log || []).length
+      ? `<div class="job-log" id="log-${j.id}">${esc(j.log.join('\n'))}</div>` : '';
+    const meta = j.status === 'running'
+      ? `<div class="job-meta"><span>${j.pct}%</span><span>속도 ${esc(j.speed)}</span><span>남은 시간 ${esc(j.eta)}</span></div>` : '';
+    return `<div class="card job">
+      <div class="job-head">
+        <span class="badge ${esc(j.status)}">${STATUS_KO[j.status] || esc(j.status)}${j.simulate ? ' · 시뮬레이션' : ''}</span>
+        <span class="job-url" title="${esc(j.url)}">${esc(j.url)}</span>
+        <span class="job-q">${esc(j.quality)}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar" style="width:${j.pct || 0}%"></div></div>
+      ${meta}
+      ${logHtml}
+      ${files ? `<div class="job-files">${files}</div>` : ''}
+    </div>`;
+  }).reverse().join('');
+  // 로그는 항상 맨 아래로
+  jobs.forEach(j => {
+    const el = document.getElementById('log-' + j.id);
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+}
+
+let polling = false;
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    while (true) {
+      const res = await fetch('/api/progress');
+      const data = await res.json();
+      render(data.jobs || []);
+      const active = (data.jobs || []).some(j => j.status === 'queued' || j.status === 'running');
+      await new Promise(r => setTimeout(r, active ? 1200 : 4000));
+    }
+  } catch (e) {
+    polling = false;
+    setTimeout(poll, 3000);
+  }
+}
+poll();
+</script>
+</body>
+</html>
