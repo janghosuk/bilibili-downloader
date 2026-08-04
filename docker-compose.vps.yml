@@ -4,7 +4,7 @@
 #   mkdir -p /opt/bilibili-downloader-data/downloads
 #   docker compose -f docker-compose.vps.yml up -d --build
 #
-# 선행: bilibili.stlennon.cloud DNS 레코드.
+# 선행: bili.stlennon.cloud DNS 레코드.
 # ⚠ 배포 전 확인할 것 — bilibili 는 데이터센터 IP 를 차단하는 경우가 있습니다.
 #   VPS 에서 한 건 받아보고(아래 검증) 실패하면 사내 LAN 유지가 맞습니다.
 services:
@@ -22,12 +22,12 @@ services:
       - hermes-agent-kozy_default
     labels:
       - traefik.enable=true
-      - traefik.http.routers.bilibili.rule=Host(`bilibili.stlennon.cloud`)
-      - traefik.http.routers.bilibili.entrypoints=websecure
-      - traefik.http.routers.bilibili.tls.certresolver=letsencrypt
-      - traefik.http.services.bilibili.loadbalancer.server.port=4434
+      - traefik.http.routers.bili.rule=Host(`bili.stlennon.cloud`)
+      - traefik.http.routers.bili.entrypoints=websecure
+      - traefik.http.routers.bili.tls.certresolver=letsencrypt
+      - traefik.http.services.bili.loadbalancer.server.port=4434
       - traefik.docker.network=hermes-agent-kozy_default
-      - traefik.http.routers.bilibili.middlewares=oauth-errors,gauth
+      - traefik.http.routers.bili.middlewares=oauth-errors,gauth
 
 networks:
   hermes-agent-kozy_default:
