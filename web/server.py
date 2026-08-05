@@ -28,6 +28,10 @@ PORT = int(os.environ.get("PORT") or 4434)
 # 다운로드 보존 시간 — 지나면 자동 삭제한다(0 이면 정리 안 함).
 # 서버에 파일이 무한정 쌓이는 것을 막는다. 컨테이너 배포 시 특히 중요.
 DOWNLOAD_TTL_HOURS = float(os.environ.get("BILI_DOWNLOAD_TTL_HOURS") or 24)
+# 다운로드 총량 상한(GB) — 넘으면 오래된 것부터 지운다(0 이면 상한 없음).
+# TTL 은 '체류 시간'이지 '총량'이 아니다. 24시간 안에도 대용량이 몰리면 디스크가 찬다.
+# VPS 는 디스크를 원장(사용량·생성물·잡)과 공유하므로, 차면 기록이 함께 멈춘다.
+DOWNLOAD_MAX_GB = float(os.environ.get("BILI_DOWNLOAD_MAX_GB") or 5)
 MAX_WORKERS = 2
 MAX_LOG_LINES = 400
 
@@ -210,6 +214,13 @@ def worker_loop():
                 else:
                     ydl.download([job["url"]])
             collect_job_files(job)
+            # 주기 청소(1시간)만으로는 그 사이 몰린 대용량을 못 막는다 — 받자마자 한 번 본다.
+            try:
+                freed = enforce_size_cap()
+                if freed:
+                    job_log(job, f"[정리] 총량 상한({DOWNLOAD_MAX_GB}GB) 초과 — 오래된 파일 {freed / 1048576:.0f}MB 삭제")
+            except Exception:
+                pass
             with jobs_lock:
                 job["status"] = "done"
                 job["pct"] = 100.0
@@ -224,6 +235,41 @@ def worker_loop():
             job_log(job, f"예외: {e}")
         finally:
             job_queue.task_done()
+
+
+def enforce_size_cap(directory=None, max_gb=None):
+    """총량이 상한을 넘으면 **오래된 파일부터** 지운다. 지운 바이트 수를 돌려준다.
+
+    TTL 청소 뒤에 한 번 더 거는 그물이다. 삭제 실패(다운로드 중 잠김 등)는 건너뛰고
+    다음 기회에 다시 시도한다 — 한 건이 걸려도 나머지는 계속 지운다.
+    """
+    d = DOWNLOAD_DIR if directory is None else Path(directory)
+    cap_gb = DOWNLOAD_MAX_GB if max_gb is None else max_gb
+    if cap_gb <= 0:
+        return 0
+    cap = cap_gb * 1024 ** 3
+    files = []
+    for f in d.glob("*"):
+        try:
+            if f.is_file():
+                st = f.stat()
+                files.append((st.st_mtime, st.st_size, f))
+        except OSError:
+            pass
+    total = sum(size for _, size, _ in files)
+    if total <= cap:
+        return 0
+    files.sort(key=lambda t: t[0])          # 오래된 것부터
+    freed = 0
+    for _, size, f in files:
+        if total - freed <= cap:
+            break
+        try:
+            f.unlink()
+            freed += size
+        except OSError:
+            pass
+    return freed
 
 
 def cleanup_loop():
@@ -241,6 +287,7 @@ def cleanup_loop():
                         f.unlink()
                 except OSError:
                     pass
+        enforce_size_cap()
         time.sleep(3600)
 
 
@@ -363,6 +410,7 @@ def api_health():
             "ffmpeg": bool(_sh.which("ffmpeg")),
             "workers": MAX_WORKERS,
             "download_ttl_hours": DOWNLOAD_TTL_HOURS,
+            "download_max_gb": DOWNLOAD_MAX_GB,
         }
     )
 
