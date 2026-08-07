@@ -122,6 +122,8 @@
   .badge.running { background: rgba(123,110,246,.14); color: var(--accent); border: 1px solid rgba(123,110,246,.4); }
   .badge.done    { background: rgba(0,206,201,.12);  color: var(--accent-secondary); border: 1px solid rgba(0,206,201,.35); }
   .badge.error   { background: rgba(255,99,99,.1);   color: #ff9a9a; border: 1px solid rgba(255,99,99,.35); }
+  /* 보존 기간이 지나 서버에서 파일이 삭제된 작업 — 완료로 보이면 안 된다(링크가 404). */
+  .badge.expired { background: rgba(139,139,154,.1); color: var(--muted); border: 1px solid var(--border); }
   .job-url {
     font-size: 12.5px; color: var(--text-strong);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -266,7 +268,7 @@ function esc(s) {
   }[c]));
 }
 
-const STATUS_KO = { queued: '대기', running: '진행 중', done: '완료', error: '실패' };
+const STATUS_KO = { queued: '대기', running: '진행 중', done: '완료', error: '실패', expired: '만료(파일 삭제됨)' };
 
 function render(jobs) {
   if (!jobs.length) return;
@@ -284,7 +286,8 @@ function render(jobs) {
       <div class="job-head">
         <span class="badge ${esc(j.status)}">${STATUS_KO[j.status] || esc(j.status)}${j.simulate ? ' · 시뮬레이션' : ''}</span>
         <span class="job-url" title="${esc(j.url)}">${esc(j.url)}</span>
-        <span class="job-q">${esc(j.quality)}</span>
+        <!-- 요청 화질과 실제 산출 해상도는 다를 수 있다(상위 화질이 프리미엄 전용이면 폴백) -->
+        <span class="job-q">${esc(j.quality)}${j.resolution ? ' · 실제 ' + esc(j.resolution) : ''}</span>
       </div>
       <div class="bar-wrap"><div class="bar" style="width:${j.pct || 0}%"></div></div>
       ${meta}
