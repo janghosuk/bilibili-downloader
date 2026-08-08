@@ -1,7 +1,7 @@
 """Bilibili 다운로더 — 웹 버전 (LENNON 스튜디오 사내 툴)
 
 기존 tkinter GUI(main.py)의 yt-dlp 호출 방식을 그대로 이식한 Flask 서버.
-- 포트 4434(PORT), 바인드 주소는 HOST(기본 0.0.0.0 — 컨테이너 기준)
+- 포트 4434(PORT), 바인드 주소는 HOST(기본 127.0.0.1 — 무인증이라 로컬 전용)
 - 도메인 화이트리스트: bilibili.com / b23.tv / bilibili.tv
 - 서버 저장 위치: ./downloads (파일명 안전화, 경로 탐색 차단)
 - 동시 다운로드 2개 제한 (워커 스레드 2개 + 작업 큐)
@@ -53,9 +53,9 @@ def read_num_env(primary: str, alias: str, default: float):
 
 
 PORT = int(os.environ.get("PORT") or 4434)
-# 바인드 주소 — 기본값은 기존 동작(0.0.0.0) 유지. 컨테이너 안에서는 0.0.0.0 이 정상이고,
-# 사내 PC 에서 띄울 때는 HOST=127.0.0.1 로 loopback 전용으로 좁힐 수 있다(이 API 는 무인증).
-HOST = os.environ.get("HOST") or "0.0.0.0"
+# 무인증 API 라 기본은 loopback 이다. 다른 PC 에 열어 주려면 HOST=0.0.0.0 을 명시한다.
+# 컨테이너에서는 Dockerfile 의 ENV HOST=0.0.0.0 이 이긴다(Traefik 이 도커 네트워크로 붙는다).
+HOST = os.environ.get("HOST") or "127.0.0.1"
 # 다운로드 보존 시간 — 지나면 자동 삭제한다(0 이면 정리 안 함).
 # 서버에 파일이 무한정 쌓이는 것을 막는다. 컨테이너 배포 시 특히 중요.
 DOWNLOAD_TTL_HOURS, TTL_ENV_SOURCE = read_num_env(

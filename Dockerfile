@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY web/ ./web/
 
 ENV PYTHONUNBUFFERED=1 \
+# 컨테이너 안에서는 모든 인터페이스에 붙는다 — Traefik 이 도커 네트워크로 접근한다.
+# 외부 노출 통제는 포트를 publish 하지 않는 것으로 한다(VPS compose 참조).
+ENV HOST=0.0.0.0
     PORT=4434 \
     BILI_DOWNLOAD_TTL_HOURS=24
 
